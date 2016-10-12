@@ -32,6 +32,8 @@ def _get_dot_for_indices(indices,OvCalc):
 
     gc.collect()
 
+    print indices[0],"-",indices[-1],":  ",sys.getsizeof(dot_result)/1e6,"MB"
+
     return dot_result
 
 class OverlapCalculator():
