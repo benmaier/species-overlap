@@ -78,7 +78,7 @@ class OverlapCalculator():
 
         if self.verbose:
             matrix_size = self.new_pond_species_matrix.data.nbytes + self.new_pond_species_matrix.indptr.nbytes + self.new_pond_species_matrix.indices.nbytes
-            print "Found %d ponds and %d species. Matrix size in memory is %4.2fMB" % (self.Np,self.Ns,matrix_size/1e6))
+            print "Found %d ponds and %d species. Matrix size in memory is %4.2fMB" % (self.Np,self.Ns,matrix_size/1e6)
 
     def get_overlap_matrix(self,nprocs=1,chunk_size=10000):
 
