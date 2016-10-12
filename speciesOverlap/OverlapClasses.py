@@ -1,6 +1,8 @@
 import gc
 import sys
+import os
 
+from time import time
 from multiprocessing import Pool
 from functools import partial
 
@@ -17,6 +19,7 @@ def _chunks(l, n):
 
 def _get_dot_for_indices(indices,OvCalc):
 
+    start = time()
     # get submatrix for current pond indices
     curr_matrix = OvCalc.new_pond_species_matrix[indices,:]
     curr_row,curr_col = curr_matrix.nonzero()
@@ -34,6 +37,8 @@ def _get_dot_for_indices(indices,OvCalc):
     gc.collect()
 
     #print indices[0],"-",indices[-1],":  ",sys.getsizeof(dot_result)/1e6,"MB"
+    end = time()
+    print indices[0],"-",indices[-1],", time needed:", end-start, "s"
 
     return dot_result
 
@@ -81,6 +86,11 @@ class OverlapCalculator():
             print "Found %d ponds and %d species. Matrix size in memory is %4.2fMB" % (self.Np,self.Ns,matrix_size/1e6)
 
     def get_overlap_matrix(self,nprocs=1,chunk_size=10000):
+
+        # This is a bad workaround to get subprocesses that actually work on several CPUs
+        # see last post in https://github.com/ipython/ipython/issues/840
+        # or http://stackoverflow.com/questions/15639779/why-does-multiprocessing-use-only-a-single-core-after-i-import-numpy/15641148#15641148
+        os.system("taskset -p 0xff %d" % os.getpid())
 
         # get chunks of pond indices
         indices = [ np.array(chunk, dtype=np.int32) for chunk in _chunks(np.arange(self.Np,dtype=np.int32),chunk_size) ]
