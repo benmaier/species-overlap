@@ -7,7 +7,7 @@ import scipy.sparse as sprs
 
 def _chunks(l, n):
     """Yield successive n-sized chunks from l."""
-    for i in range(0, len(l), n):
+    for i in xrange(0, len(l), n):
         yield l[i:i + n]    
 
 def _get_dot_for_indices(indices,OvCalc):
@@ -28,7 +28,13 @@ def _get_dot_for_indices(indices,OvCalc):
 
 class OverlapCalculator():
 
-    def __init__(self,pond_species_matrix,weighted=False):
+    def __init__(self,pond_species_matrix,weighted=False,int_to_pond=None,int_to_species=None,pond_to_int=None,species_to_int=None):
+
+        self.int_to_pond = int_to_pond
+        self.int_to_species = int_to_species
+
+        self.pond_to_int = pond_to_int
+        self.species_to_int = species_to_int
 
         # get shape and nonzero coordinates
         self.Np, self.Ns = pond_species_matrix.shape
@@ -88,6 +94,70 @@ class OverlapCalculator():
         data = self.overlap_matrix.data
         np.savez(open(filename,'wb'),row=row,col=col,data=data)
 
+class ColumnListOverlapCalculator(OverlapCalculator):
+
+    def __init__(self,column_list):
+
+        """ requires data_list to be a list like 
+            [ (pond_identifier, species_identifier, weight), (..., ), ... ]
+        """
+
+
+        if len(column_list) == 2:
+            weighted = False
+        elif len(column_list) == 3:
+            weighted = True
+        else:
+            raise ValueError("Unexpected size of column_list:", len(column_list),'. Expected 2 or 3.')
+
+        if len(column_list[0]) != len(column_list[1]) or \
+            (weighted and ( len(column_list[2]) != len(column_list[1]) or\
+                            len(column_list[0]) != len(column_list[2])\
+                          )\
+                          ):
+            raise ValueError("Columns don't have same length")
+
+        pond_set = set(list(column_list[0]))
+        species_set = set(list(column_list[1]))
+
+        self.pond_to_int = {}
+        self.species_to_int = {}
+        self.int_to_pond = {}
+        self.int_to_species = {}
+
+        pond_counter = 0
+        for pond in pond_set:
+            self.pond_to_int[pond] = pond_counter
+            self.int_to_pond[pond_counter] = pond
+            pond_counter += 1
+
+        species_counter = 0
+        for species in species_set:
+            self.species_to_int[species] = species_counter
+            self.int_to_species[species_counter] = species
+            species_counter += 1
+
+        row = np.array([ self.pond_to_int[pond] for pond in column_list[0] ], dtype=np.int32)
+        col = np.array([ self.species_to_int[species] for species in column_list[1] ], dtype=np.int32)
+
+        if weighted:
+            data = np.array([ weight for weight in column_list[2] ],dtype=np.float32)
+        else:
+            data = np.ones_like(row)
+
+        pond_species_matrix = sprs.csr_matrix((data,(row,col)),shape=(pond_counter,species_counter))
+
+
+        OverlapCalculator.__init__(self,
+                                   pond_species_matrix,
+                                   weighted=weighted,
+                                   int_to_pond=self.int_to_pond,
+                                   int_to_species=self.int_to_species,
+                                   pond_to_int=self.pond_to_int,
+                                   species_to_int=self.species_to_int,
+                                   )
+
+
 
 class TupleListOverlapCalculator(OverlapCalculator):
 
@@ -102,9 +172,6 @@ class TupleListOverlapCalculator(OverlapCalculator):
             weighted = True
         else:
             raise ValueError("Unexpected value size of data_list:", len(data_list[0]),'. Expected 2 or 3.')
-
-        self.pond_set = set()
-        self.species_set = set()
 
         row = []
         col = []
@@ -159,7 +226,14 @@ class TupleListOverlapCalculator(OverlapCalculator):
 
         pond_species_matrix = sprs.csr_matrix((data,(row,col)),shape=(pond_counter,species_counter))
 
-        OverlapCalculator.__init__(self,pond_species_matrix,weighted=weighted)
+        OverlapCalculator.__init__(self,
+                                   pond_species_matrix,
+                                   weighted=weighted,
+                                   int_to_pond=self.int_to_pond,
+                                   int_to_species=self.int_to_species,
+                                   pond_to_int=self.pond_to_int,
+                                   species_to_int=self.species_to_int,
+                                   )
 
 
 
@@ -237,6 +311,16 @@ if __name__=="__main__":
             ( 'c', '3', 3 ),
            ]
     OvCalc = TupleListOverlapCalculator(data)
+    OvCalc.get_overlap_matrix(2,2)
+
+    print OvCalc.overlap_matrix
+
+    print "COLUMN LIST TEST"
+    data2 = []
+    data2.append([ a[0] for a in data ]) 
+    data2.append([ a[1] for a in data ]) 
+    data2.append([ a[2] for a in data ]) 
+    OvCalc = ColumnListOverlapCalculator(data2)
     OvCalc.get_overlap_matrix(2,2)
 
     print OvCalc.overlap_matrix
