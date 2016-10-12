@@ -101,11 +101,17 @@ class OverlapCalculator():
         # collect results as sum over all indices chunks
         W = sum(dot_result)
 
+        del dot_result
+        gc.collect()
+
         # finalize calculation
         if self.weighted:
             self.overlap_matrix = W.multiply( W.T ) 
+            del W
+            gc.collect()
         else:
             self.overlap_matrix = W
+
 
         return self.overlap_matrix
 
