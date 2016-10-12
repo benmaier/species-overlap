@@ -39,7 +39,7 @@ def _get_dot_for_indices(indices,OvCalc):
 
 class OverlapCalculator():
 
-    def __init__(self,pond_species_matrix,weighted=False,int_to_pond=None,int_to_species=None,pond_to_int=None,species_to_int=None,verbose=False):
+    def __init__(self,pond_species_matrix,weighted=False,int_to_pond=None,int_to_species=None,pond_to_int=None,species_to_int=None,verbose=False,delete_original_matrix=False):
 
         self.verbose = verbose
 
@@ -68,12 +68,17 @@ class OverlapCalculator():
             data = np.ones_like(self.row)
             self.existence_matrix = sprs.csr_matrix((data,(self.row,self.col)),shape=(self.Np,self.Ns))
 
+            if delete_original_matrix:
+                del pond_species_matrix
+                gc.collect()
+
         else:
             self.existence_matrix = pond_species_matrix
             self.new_pond_species_matrix = pond_species_matrix
 
         if self.verbose:
-            print "Found %d ponds and %d species. Matrix size in memory is %4.2fMB" % (self.Np,self.Ns,sys.getsizeof(self.new_pond_species_matrix)/1e6)
+            matrix_size = self.new_pond_species_matrix.data.nbytes + self.new_pond_species_matrix.indptr.nbytes + self.new_pond_species_matrix.indices.nbytes
+            print "Found %d ponds and %d species. Matrix size in memory is %4.2fMB" % (self.Np,self.Ns,matrix_size)/1e6)
 
     def get_overlap_matrix(self,nprocs=1,chunk_size=10000):
 
@@ -142,7 +147,7 @@ class OverlapCalculator():
 
 class ColumnListOverlapCalculator(OverlapCalculator):
 
-    def __init__(self,column_list,verbose=False):
+    def __init__(self,column_list,verbose=False,delete_original_data=True):
 
         """ requires data_list to be a list like 
             [ (pond_identifier, species_identifier, weight), (..., ), ... ]
@@ -191,6 +196,10 @@ class ColumnListOverlapCalculator(OverlapCalculator):
         else:
             data = np.ones_like(row)
 
+        if delete_original_data:
+            del column_list
+            gc.collect()
+
         pond_species_matrix = sprs.csr_matrix((data,(row,col)),shape=(pond_counter,species_counter))
 
 
@@ -201,14 +210,15 @@ class ColumnListOverlapCalculator(OverlapCalculator):
                                    int_to_species=self.int_to_species,
                                    pond_to_int=self.pond_to_int,
                                    species_to_int=self.species_to_int,
-                                   verbose = verbose
+                                   verbose = verbose,
+                                   delete_original_matrix = True,
                                    )
 
 
 
 class TupleListOverlapCalculator(OverlapCalculator):
 
-    def __init__(self,data_list,verbose=False):
+    def __init__(self,data_list,verbose=False,delete_original_data=False):
         """ requires data_list to be a list like 
             [ (pond_identifier, species_identifier, weight), (..., ), ... ]
         """
@@ -271,6 +281,10 @@ class TupleListOverlapCalculator(OverlapCalculator):
         # col = col[sort_ndcs]
         # data = data[sort_ndcs]
 
+        if delete_original_data:
+            del data_list
+            gc.collect()
+
         pond_species_matrix = sprs.csr_matrix((data,(row,col)),shape=(pond_counter,species_counter))
 
         OverlapCalculator.__init__(self,
@@ -281,6 +295,7 @@ class TupleListOverlapCalculator(OverlapCalculator):
                                    pond_to_int=self.pond_to_int,
                                    species_to_int=self.species_to_int,
                                    verbose = verbose,
+                                   delete_original_matrix = True
                                    )
 
 
