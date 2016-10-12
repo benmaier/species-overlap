@@ -1,4 +1,5 @@
 import gc
+import sys
 
 from multiprocessing import Pool
 from functools import partial
@@ -32,13 +33,15 @@ def _get_dot_for_indices(indices,OvCalc):
 
     gc.collect()
 
-    print indices[0],"-",indices[-1],":  ",sys.getsizeof(dot_result)/1e6,"MB"
+    #print indices[0],"-",indices[-1],":  ",sys.getsizeof(dot_result)/1e6,"MB"
 
     return dot_result
 
 class OverlapCalculator():
 
-    def __init__(self,pond_species_matrix,weighted=False,int_to_pond=None,int_to_species=None,pond_to_int=None,species_to_int=None):
+    def __init__(self,pond_species_matrix,weighted=False,int_to_pond=None,int_to_species=None,pond_to_int=None,species_to_int=None,verbose=False):
+
+        self.verbose = verbose
 
         self.int_to_pond = int_to_pond
         self.int_to_species = int_to_species
@@ -68,6 +71,9 @@ class OverlapCalculator():
         else:
             self.existence_matrix = pond_species_matrix
             self.new_pond_species_matrix = pond_species_matrix
+
+        if self.verbose:
+            print "Found %d ponds and %d species. Matrix size in memory is %4.2fMB" % (self.Np,self.Ns,sys.getsizeof(self.new_pond_species_matrix)/1e6)
 
     def get_overlap_matrix(self,nprocs=1,chunk_size=10000):
 
@@ -136,7 +142,7 @@ class OverlapCalculator():
 
 class ColumnListOverlapCalculator(OverlapCalculator):
 
-    def __init__(self,column_list):
+    def __init__(self,column_list,verbose=False):
 
         """ requires data_list to be a list like 
             [ (pond_identifier, species_identifier, weight), (..., ), ... ]
@@ -195,13 +201,14 @@ class ColumnListOverlapCalculator(OverlapCalculator):
                                    int_to_species=self.int_to_species,
                                    pond_to_int=self.pond_to_int,
                                    species_to_int=self.species_to_int,
+                                   verbose = verbose
                                    )
 
 
 
 class TupleListOverlapCalculator(OverlapCalculator):
 
-    def __init__(self,data_list):
+    def __init__(self,data_list,verbose=False):
         """ requires data_list to be a list like 
             [ (pond_identifier, species_identifier, weight), (..., ), ... ]
         """
@@ -273,6 +280,7 @@ class TupleListOverlapCalculator(OverlapCalculator):
                                    int_to_species=self.int_to_species,
                                    pond_to_int=self.pond_to_int,
                                    species_to_int=self.species_to_int,
+                                   verbose = verbose,
                                    )
 
 
@@ -350,7 +358,7 @@ if __name__=="__main__":
             ( 'c', '2', 2 ),
             ( 'c', '3', 3 ),
            ]
-    OvCalc = TupleListOverlapCalculator(data)
+    OvCalc = TupleListOverlapCalculator(data,verbose=True)
     OvCalc.get_overlap_matrix(2,2)
 
     print OvCalc.overlap_matrix
