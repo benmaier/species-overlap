@@ -85,6 +85,25 @@ class OverlapCalculator():
             matrix_size = self.new_pond_species_matrix.data.nbytes + self.new_pond_species_matrix.indptr.nbytes + self.new_pond_species_matrix.indices.nbytes
             print "Found %d ponds and %d species. Matrix size in memory is %4.2fMB" % (self.Np,self.Ns,matrix_size/1e6)
 
+    def get_overlap_matrix_single(self):
+
+        # get dot product of each chunk submatrix with existence matrix
+        W = self.new_pond_species_matrix.dot(self.existence_matrix.T)
+
+        del self.new_pond_species_matrix
+        del self.existence_matrix
+        gc.collect()
+
+        # finalize calculation
+        if self.weighted:
+            self.overlap_matrix = W.multiply( W.T ) 
+            del W
+            gc.collect()
+        else:
+            self.overlap_matrix = W
+
+        return self.overlap_matrix
+
     def get_overlap_matrix(self,nprocs=1,chunk_size=10000):
 
         # This is a bad workaround to get subprocesses that actually work on several CPUs
