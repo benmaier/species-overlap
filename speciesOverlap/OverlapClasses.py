@@ -1,9 +1,13 @@
+import gc
+
 from multiprocessing import Pool
 from functools import partial
 
 import numpy as np
 import scipy as sp
 import scipy.sparse as sprs
+
+import cPickle as pickle
 
 def _chunks(l, n):
     """Yield successive n-sized chunks from l."""
@@ -23,6 +27,10 @@ def _get_dot_for_indices(indices,OvCalc):
 
     # calculate dot product as demanded
     dot_result = curr_matrix.dot(OvCalc.existence_matrix.T)
+
+    del curr_matrix
+
+    gc.collect()
 
     return dot_result
 
@@ -93,6 +101,36 @@ class OverlapCalculator():
         row, col = self.overlap_matrix.nonzero()
         data = self.overlap_matrix.data
         np.savez(open(filename,'wb'),row=row,col=col,data=data)
+
+    def save_ovcalc(self,filename):
+
+        row, col = self.overlap_matrix.nonzero()
+        data = self.overlap_matrix.data
+        pickle.dump({
+                        'row': row, 
+                        'col': col,
+                        'data': data,
+                        'pond_to_int': self.pond_to_int,
+                        'species_to_int': self.species_to_int,
+                        'int_to_pond': self.int_to_pond,
+                        'int_to_species': self.int_to_species,
+                        'N_pond': self.Np,
+                        'N_species': self.Ns
+                    },
+                    open(filename,'wb')
+                    )
+
+    def load_ovcalc(self,filename):
+
+        props = pickle.load(open(filename,'rb'))
+        self.Ns, self.Np = props["N_species"], props["N_pond"]
+        row, col, data = props["row"], props["col"], props["data"]
+        self.overlap_matrix = sprs.csr_matrix((data,(row,col)),shape=(self.Np,self.Ns))
+
+        self.pond_to_int = props['pond_to_int']
+        self.species_to_int = props['species_to_int']
+        self.int_to_pond = props['int_to_pond']
+        self.int_to_species = props['int_to_species']
 
 class ColumnListOverlapCalculator(OverlapCalculator):
 
