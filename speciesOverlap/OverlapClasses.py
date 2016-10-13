@@ -161,24 +161,37 @@ class OverlapCalculator():
                         'pond_to_int': self.pond_to_int,
                         'species_to_int': self.species_to_int,
                         'int_to_pond': self.int_to_pond,
-                        'int_to_species': self.int_to_species,
-                        'N_pond': self.Np,
-                        'N_species': self.Ns
+                        'N_ponds': self.Np,
                     },
                     open(filename,'wb')
                     )
 
-    def load_ovcalc(self,filename):
+class FinishedOvCalc():
+
+    def __init__(self,filename):
 
         props = pickle.load(open(filename,'rb'))
-        self.Ns, self.Np = props["N_species"], props["N_pond"]
-        row, col, data = props["row"], props["col"], props["data"]
-        self.overlap_matrix = sprs.csr_matrix((data,(row,col)),shape=(self.Np,self.Ns))
+
+        if "N_glades" in props:
+            self.is_twocategory = True
+            self.glade_to_int = props['glade_to_int']
+            self.int_to_glade = props['int_to_glade']
+            self.N_glades = props["N_glades"]
+
+        else:
+            self.is_twocategory = False
+
+        if "N_ponds" in props
+            self.N_ponds = props["N_ponds"]
+        elif "N_pond" in props:
+            self.N_ponds = props["N_pond"]
+
 
         self.pond_to_int = props['pond_to_int']
-        self.species_to_int = props['species_to_int']
         self.int_to_pond = props['int_to_pond']
-        self.int_to_species = props['int_to_species']
+
+        row, col, data = props["row"], props["col"], props["data"]
+        self.overlap_matrix = sprs.csr_matrix((data,(row,col)),shape=(self.N_ponds,self.N_glades))
 
 class ColumnListOverlapCalculator(OverlapCalculator):
 
