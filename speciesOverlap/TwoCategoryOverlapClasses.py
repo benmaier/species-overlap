@@ -16,7 +16,7 @@ from speciesOverlap.OverlapClasses import OverlapCalculator
 
 class TwoCategoryOverlapCalculator(OverlapCalculator):
 
-    def __init__(self,pond_species_matrix,glade_species_matrix,weighted=False,int_to_pond=None,int_to_glade=None,int_to_species=None,pond_to_int=None,glade_to_int=None,species_to_int=None,verbose=False,delete_original_matrix=False):
+    def __init__(self,pond_species_matrix,glade_species_matrix,weighted=False,int_to_pond=None,int_to_glade=None,pond_to_int=None,glade_to_int=None,verbose=False,delete_original_matrix=False):
 
         self.verbose = verbose
 
@@ -32,11 +32,8 @@ class TwoCategoryOverlapCalculator(OverlapCalculator):
                                    delete_original_matrix = True,
                                    )
 
-        self.int_to_pond = int_to_pond
-        self.int_to_species = int_to_species
-
         self.pond_to_int = pond_to_int
-        self.species_to_int = species_to_int
+        self.int_to_pond = int_to_pond
 
         self.glade_to_int = glade_to_int
         self.int_to_glade = int_to_glade
@@ -180,10 +177,8 @@ class TupleListTwoCategoryOverlapCalculator(TwoCategoryOverlapCalculator):
                                    weighted=weighted,
                                    int_to_pond=ints_to_ponds[0],
                                    int_to_glade=ints_to_ponds[1],
-                                   int_to_species=self.int_to_species,
                                    pond_to_int=ponds_to_ints[0],
                                    glade_to_int=ponds_to_ints[1],
-                                   species_to_int=self.species_to_int,
                                    verbose = verbose,
                                    delete_original_matrix = True
                                    )

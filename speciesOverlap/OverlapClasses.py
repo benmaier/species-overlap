@@ -44,15 +44,13 @@ def _get_dot_for_indices(indices,OvCalc):
 
 class OverlapCalculator():
 
-    def __init__(self,pond_species_matrix,weighted=False,int_to_pond=None,int_to_species=None,pond_to_int=None,species_to_int=None,verbose=False,delete_original_matrix=False):
+    def __init__(self,pond_species_matrix,weighted=False,int_to_pond=None,pond_to_int=None,verbose=False,delete_original_matrix=False):
 
         self.verbose = verbose
 
         self.int_to_pond = int_to_pond
-        self.int_to_species = int_to_species
 
         self.pond_to_int = pond_to_int
-        self.species_to_int = species_to_int
 
         # get shape and nonzero coordinates
         self.Np, self.Ns = pond_species_matrix.shape
@@ -159,7 +157,6 @@ class OverlapCalculator():
                         'col': col,
                         'data': data,
                         'pond_to_int': self.pond_to_int,
-                        'species_to_int': self.species_to_int,
                         'int_to_pond': self.int_to_pond,
                         'N_ponds': self.Np,
                     },
@@ -191,7 +188,11 @@ class FinishedOvCalc():
         self.int_to_pond = props['int_to_pond']
 
         row, col, data = props["row"], props["col"], props["data"]
-        self.overlap_matrix = sprs.csr_matrix((data,(row,col)),shape=(self.N_ponds,self.N_glades))
+
+        if self.is_twocategory:
+            self.overlap_matrix = sprs.csr_matrix((data,(row,col)),shape=(self.N_ponds,self.N_glades))
+        else:
+            self.overlap_matrix = sprs.csr_matrix((data,(row,col)),shape=(self.N_ponds,self.N_ponds))
 
 class ColumnListOverlapCalculator(OverlapCalculator):
 
@@ -255,9 +256,7 @@ class ColumnListOverlapCalculator(OverlapCalculator):
                                    pond_species_matrix,
                                    weighted=weighted,
                                    int_to_pond=self.int_to_pond,
-                                   int_to_species=self.int_to_species,
                                    pond_to_int=self.pond_to_int,
-                                   species_to_int=self.species_to_int,
                                    verbose = verbose,
                                    delete_original_matrix = True,
                                    )
@@ -339,9 +338,7 @@ class TupleListOverlapCalculator(OverlapCalculator):
                                    pond_species_matrix,
                                    weighted=weighted,
                                    int_to_pond=self.int_to_pond,
-                                   int_to_species=self.int_to_species,
                                    pond_to_int=self.pond_to_int,
-                                   species_to_int=self.species_to_int,
                                    verbose = verbose,
                                    delete_original_matrix = True
                                    )
