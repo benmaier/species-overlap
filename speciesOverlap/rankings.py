@@ -81,8 +81,10 @@ class Ranking():
 
         if hasattr(self.ovcalc,'N_glades'):
 
-            ranks = self.compute_single(is_single_category=False)
-            ranks += self.compute_single(use_transposed=True,is_single_category=False)
+            ranks_ponds = self.compute_single(is_single_category=False)
+            ranks_glades = self.compute_single(use_transposed=True,is_single_category=False)
+
+            ranks = [ ranks_ponds, ranks_glades ]
 
         else:
             ranks = self.compute_single()
