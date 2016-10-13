@@ -12,7 +12,7 @@ import scipy.sparse as sprs
 
 import cPickle as pickle
 
-from OverlapClasses import OverlapCalculator
+from speciesOverlap.OverlapClasses import OverlapCalculator
 
 class TwoCategoryOverlapCalculator(OverlapCalculator):
 
