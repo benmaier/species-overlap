@@ -23,10 +23,7 @@ class Ranking():
         self.znorm_target = znorm_target
         self.standard_mean = standard_mean
 
-        if self.ranklength is None:
-            self.ranklength = max(self.ovcalc.overlap_matrix.shape)
-        else:
-            self.ranklength = ranklength
+        self.ranklength = ranklength
 
         self.N_source, self.N_target = self.ovcalc.overlap_matrix.shape
 
@@ -68,7 +65,12 @@ class Ranking():
         ranks = []
 
         for row in xrange(new_matrix.shape[0]):
-            greatest_indices = bn.argpartsort( new_matrix.data[ new_matrix.indptr[row]:new_matrix.indptr[row+1] ], self.ranklength)
+
+            if self.ranklength is None:
+                greatest_indices = np.argsort( new_matrix.data[ new_matrix.indptr[row]:new_matrix.indptr[row+1] ])
+            else:
+                greatest_indices = bn.argpartsort( new_matrix.data[ new_matrix.indptr[row]:new_matrix.indptr[row+1] ], self.ranklength)
+
             col_indices = (new_matrix.indices[new_matrix.indptr[row]:new_matrix.indptr[row+1]])[greatest_indices]
             for col in col_indices:
                 ranks.append([ int_to_pond[row], int_to_glade[col] ])
@@ -77,7 +79,7 @@ class Ranking():
 
     def compute(self):
 
-        if hasattr(ovCalc,'N_glades'):
+        if hasattr(self.ovcalc,'N_glades'):
 
             ranks = self.compute_single(is_single_category=False)
             ranks += self.compute_single(use_transposed=True,is_single_category=False)
@@ -115,11 +117,11 @@ if __name__=="__main__":
     ovcalc1 = TLOvCalc(data,verbose=True)
     ovcalc1.get_overlap_matrix_single()
 
-    Ranking = NormedOverlapRanking(ovcalc1)
-    print Ranking.compute()
+    ranking = NormedOverlapRanking(ovcalc1)
+    print ranking.compute()
 
     ovcalc2 = TLTCOvCalc(data[:5],data[5:],verbose=True)
     ovcalc2.get_overlap_matrix_single()
 
-    Ranking = NormedOverlapRanking(ovcalc2)
-    print Ranking.compute()
+    ranking = NormedOverlapRanking(ovcalc2)
+    print ranking.compute()

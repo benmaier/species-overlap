@@ -163,8 +163,8 @@ class TupleListTwoCategoryOverlapCalculator(TwoCategoryOverlapCalculator):
             # col = col[sort_ndcs]
             # data = data[sort_ndcs]
             matrix_data.append( ( (data,(row,col)), pond_counter) ) 
-            ints_to_ponds.append(pond_to_int)
-            ponds_to_ints.append(int_to_pond)
+            ints_to_ponds.append(int_to_pond)
+            ponds_to_ints.append(pond_to_int)
 
         pond_species_matrix = sprs.csr_matrix(matrix_data[0][0],shape=(matrix_data[0][1],species_counter))
         glade_species_matrix = sprs.csr_matrix(matrix_data[1][0],shape=(matrix_data[1][1],species_counter))

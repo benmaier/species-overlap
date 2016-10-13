@@ -181,7 +181,7 @@ class FinishedOvCalc():
         else:
             self.is_twocategory = False
 
-        if "N_ponds" in props
+        if "N_ponds" in props:
             self.N_ponds = props["N_ponds"]
         elif "N_pond" in props:
             self.N_ponds = props["N_pond"]
