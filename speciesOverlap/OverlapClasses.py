@@ -12,6 +12,9 @@ import scipy.sparse as sprs
 
 import cPickle as pickle
 
+from speciesOverlap.utilities import _get_sizeof_string
+from speciesOverlap.utilities import update_progress
+
 def _chunks(l, n):
     """Yield successive n-sized chunks from l."""
     for i in xrange(0, len(l), n):
@@ -46,6 +49,7 @@ class OverlapCalculator():
 
     def __init__(self,pond_species_matrix,weighted=False,int_to_pond=None,pond_to_int=None,verbose=False,delete_original_matrix=False):
 
+        self.is_twocategory = False
         self.verbose = verbose
 
         self.int_to_pond = int_to_pond
@@ -58,10 +62,10 @@ class OverlapCalculator():
         self.row, self.col = pond_species_matrix.nonzero()
         self.weighted = weighted
 
-        if self.weighted:
+        #get cumulated occurences of species per pond
+        self.k_pond = np.array(pond_species_matrix.sum(axis=1)).flatten()
 
-            #get cumulated occurences of species per pond
-            self.k_pond = np.array(pond_species_matrix.sum(axis=1)).flatten()
+        if self.weighted:
 
             # norm species occurences to species probability per pond
             data = pond_species_matrix.data / self.k_pond[self.row].astype(float)
@@ -81,11 +85,13 @@ class OverlapCalculator():
 
         if self.verbose:
             matrix_size = self.new_pond_species_matrix.data.nbytes + self.new_pond_species_matrix.indptr.nbytes + self.new_pond_species_matrix.indices.nbytes
-            print "Found %d ponds and %d species. Matrix size in memory is %4.2fMB" % (self.Np,self.Ns,matrix_size/1e6)
+            print ("Found %d ponds and %d species. Matrix size in memory is "+_get_sizeof_string(matrix_size)) % (self.Np,self.Ns)
 
     def get_overlap_matrix_single(self):
 
         # get dot product of each chunk submatrix with existence matrix
+        if self.verbose:
+            print "calculating overlap matrix..."
         W = self.new_pond_species_matrix.dot(self.existence_matrix.T)
 
         del self.new_pond_species_matrix
@@ -94,6 +100,8 @@ class OverlapCalculator():
 
         # finalize calculation
         if self.weighted:
+            if self.verbose:
+                print "calculating weighted overlap..." 
             self.overlap_matrix = W.multiply( W.T ) 
             del W
             gc.collect()
@@ -159,6 +167,7 @@ class OverlapCalculator():
                         'pond_to_int': self.pond_to_int,
                         'int_to_pond': self.int_to_pond,
                         'N_ponds': self.Np,
+                        'k_pond': self.k_pond,
                     },
                     open(filename,'wb')
                     )
@@ -180,12 +189,10 @@ class FinishedOvCalc():
 
         if "N_ponds" in props:
             self.N_ponds = props["N_ponds"]
-        elif "N_pond" in props:
-            self.N_ponds = props["N_pond"]
-
 
         self.pond_to_int = props['pond_to_int']
         self.int_to_pond = props['int_to_pond']
+        self.k_pond = props["k_pond"]
 
         row, col, data = props["row"], props["col"], props["data"]
 
@@ -289,6 +296,14 @@ class TupleListOverlapCalculator(OverlapCalculator):
         self.int_to_pond = {}
         self.int_to_species = {}
 
+        len_all = len(data_list)
+
+        if verbose and len_all>20000:
+            times = []
+            entry_count = 1
+            chunk_size = 5000
+            n_chunks = int(np.ceil(len_all/float(chunk_size)))
+
         for entry in data_list:
             pond = entry[0]
             species = entry[1]
@@ -317,6 +332,15 @@ class TupleListOverlapCalculator(OverlapCalculator):
             row.append(current_pond_int)
             col.append(current_species_int)
             data.append(dat)
+
+            if verbose and len_all>20000 and (entry_count % chunk_size == 0 or entry_count == len_all):
+                end = time()
+                times.append(end-start)
+                update_progress(entry_count/chunk_size,n_chunks,times,status="converting data to sparse matrix")
+                start = time()
+
+            if verbose and len_all>20000:
+                entry_count += 1
 
         row = np.array(row,dtype=np.int32)
         col = np.array(col,dtype=np.int32)

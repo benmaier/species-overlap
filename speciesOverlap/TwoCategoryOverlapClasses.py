@@ -13,6 +13,7 @@ import scipy.sparse as sprs
 import cPickle as pickle
 
 from speciesOverlap.OverlapClasses import OverlapCalculator
+from speciesOverlap.utilities import update_progress
 
 class TwoCategoryOverlapCalculator(OverlapCalculator):
 
@@ -38,14 +39,22 @@ class TwoCategoryOverlapCalculator(OverlapCalculator):
         self.glade_to_int = glade_to_int
         self.int_to_glade = int_to_glade
 
+        self.is_twocategory = True
+
 
     def get_overlap_matrix_single(self):
 
         # get dot product of each chunk submatrix with existence matrix
+        if self.verbose:
+            print "calculating first overlap matrix..."
+
         W = self.new_pond_species_matrix[:self.N_ponds,:].dot(self.existence_matrix[self.N_ponds:,:].T)
 
         # finalize calculation
         if self.weighted:
+            if self.verbose:
+                print "calculating second overlap matrix..."
+
             Wg = self.new_pond_species_matrix[self.N_ponds:,:].dot( self.existence_matrix[:self.N_ponds,:].T )
 
             del self.new_pond_species_matrix
@@ -80,6 +89,7 @@ class TwoCategoryOverlapCalculator(OverlapCalculator):
                         'int_to_glade': self.int_to_glade,
                         'N_ponds': self.N_ponds,
                         'N_glades': self.N_glades,
+                        'k_pond': self.k_pond,
                     },
                     open(filename,'wb')
                     )
@@ -110,6 +120,16 @@ class TupleListTwoCategoryOverlapCalculator(TwoCategoryOverlapCalculator):
 
         matrix_data = []
 
+        len_ponds = len(data_list_ponds)
+        len_glades = len(data_list_glades)
+        len_all = len_ponds + len_glades
+
+        if verbose and len_all>20000:
+            times = []
+            entry_count = 1
+            chunk_size = 5000
+            n_chunks = int(np.ceil(len_all/float(chunk_size)))
+
 
         for i_dl,data_list in enumerate(data_lists): 
             row = []
@@ -120,6 +140,10 @@ class TupleListTwoCategoryOverlapCalculator(TwoCategoryOverlapCalculator):
 
             pond_to_int = {}
             int_to_pond = {}
+
+            if verbose:
+                start = time()
+                times = []
 
             for entry in data_list:
                 pond = entry[0]
@@ -149,6 +173,15 @@ class TupleListTwoCategoryOverlapCalculator(TwoCategoryOverlapCalculator):
                 row.append(current_pond_int)
                 col.append(current_species_int)
                 data.append(dat)
+
+                if verbose and len_all>20000 and (entry_count % chunk_size == 0 or entry_count == len_all):
+                    end = time()
+                    times.append(end-start)
+                    update_progress(entry_count/chunk_size,n_chunks,times,status="converting data to sparse matrix")
+                    start = time()
+
+                if verbose and len_all>20000:
+                    entry_count += 1
 
             row = np.array(row,dtype=np.int32)
             col = np.array(col,dtype=np.int32)
