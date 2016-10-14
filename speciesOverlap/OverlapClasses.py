@@ -303,6 +303,7 @@ class TupleListOverlapCalculator(OverlapCalculator):
             entry_count = 1
             chunk_size = 5000
             n_chunks = int(np.ceil(len_all/float(chunk_size)))
+            start = time()
 
         for entry in data_list:
             pond = entry[0]

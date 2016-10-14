@@ -102,7 +102,9 @@ class Ranking():
 
         for row in xrange(new_matrix.shape[0]):
 
-            if self.ranklength is None:
+            data_length = len( new_matrix.data[ new_matrix.indptr[row]:new_matrix.indptr[row+1] ])
+
+            if self.ranklength is None or data_length <= self.ranklength:
                 greatest_indices = np.argsort( new_matrix.data[ new_matrix.indptr[row]:new_matrix.indptr[row+1] ])
             else:
                 # get n smallest values (or greatest, respectively, since we multiplied with -1)
@@ -125,7 +127,7 @@ class Ranking():
             if self.verbose:
                 end = time()
                 times.append(end-start)
-                update_progress(col+1,new_matrix.shape[1],times,status="ranking and saving")
+                update_progress(row+1,new_matrix.shape[0],times,status="ranking and saving")
                 start = time()
 
 
