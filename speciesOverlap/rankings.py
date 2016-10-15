@@ -1,4 +1,5 @@
 import gc
+import warnings
 
 from time import time
 
@@ -14,6 +15,8 @@ from speciesOverlap import FinishedOvCalc
 from speciesOverlap import TupleListOverlapCalculator as TLOvCalc
 from speciesOverlap import TupleListTwoCategoryOverlapCalculator as TLTCOvCalc
 from speciesOverlap.utilities import update_progress
+
+warnings.simplefilter('error')
 
 class Ranking():
     
@@ -85,7 +88,10 @@ class Ranking():
             for col in xrange(new_matrix.shape[1]):
 
                 #print int_to_glade[col], new_matrix.data[new_matrix.indptr[col]:new_matrix.indptr[col+1]]
-                new_matrix.data[new_matrix.indptr[col]:new_matrix.indptr[col+1]] = manipulate( new_matrix.data[new_matrix.indptr[col]:new_matrix.indptr[col+1]] )
+                try:
+                    new_matrix.data[new_matrix.indptr[col]:new_matrix.indptr[col+1]] = manipulate( new_matrix.data[new_matrix.indptr[col]:new_matrix.indptr[col+1]] )
+                except:
+                    new_matrix.data[new_matrix.indptr[col]:new_matrix.indptr[col+1]] /= np.mean( new_matrix.data[new_matrix.indptr[col]:new_matrix.indptr[col+1]] ) 
 
                 if self.verbose:
                     end = time()
