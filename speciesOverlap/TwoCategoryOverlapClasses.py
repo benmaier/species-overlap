@@ -115,6 +115,159 @@ class NumpyDictTwoCategoryOverlapCalculator(TwoCategoryOverlapCalculator):
         data_dicts = [ data_dict_ponds, data_dict_glades ]
         self.species_to_int = {}
         self.int_to_species = {}
+
+        ponds_to_ints = []
+        ints_to_ponds = []
+
+        matrix_data = []
+
+        len_ponds = len(data_dict_ponds)
+        len_glades = len(data_dict_glades)
+        len_all = len_ponds + len_glades
+
+        species_counter = np.iinfo(np.uint64).max
+
+        if verbose:
+            times = []
+            entry_count = 1
+            update_progress(0,len_all,times,status="converting data to sparse matrix")
+
+        p_cols = []
+        p_rows = []
+        p_data = []
+        
+
+
+        for i_dl,data_dict in enumerate(data_dicts): 
+            row = []
+            col = []
+            data = []
+
+            pond_counter = 0
+
+            # convert pond names to integers and vice versa
+            int_to_pond = { i:k for i,k in izip(xrange(len(data_dict)), data_dict.iterkeys()) }
+            pond_to_int = { k:i for i,k in izip(xrange(len(data_dict)), data_dict.iterkeys()) }
+
+            if verbose:
+                start = time()
+
+            for pond,entry in data_dict.iteritems():
+
+                if weighted:
+                    species_array = entry[0]
+                    data_array = entry[1]
+                else:
+                    species_array = entry
+                    data_array = np.ones_like(species_array)
+
+                current_pond_int = pond_to_int[pond]
+
+                row.append(current_pond_int*np.ones_like(data_array,dtype=np.uint32))
+                col.append(species_array)
+                data.append(data_array)
+
+                if verbose:
+                    end = time()
+                    times.append(end-start)
+                    update_progress(entry_count,len_all,times,status="preparing data for sparse conversion")
+                    start = time()
+                    entry_count += 1
+
+            row = np.concatenate(row)
+            col = np.concatenate(col)
+            data = np.concatenate(data)
+
+            p_cols.append(col)
+            p_rows.append(row)
+            p_data.append(data)
+
+            # sort_ndcs = np.argsort(row)
+
+            # row = row[sort_ndcs]
+            # col = col[sort_ndcs]
+            # data = data[sort_ndcs]
+            # matrix_data.append( ( (data,(row,col)), len(int_to_pond)) ) 
+            ints_to_ponds.append(int_to_pond)
+            ponds_to_ints.append(pond_to_int)
+
+        if verbose:
+            start = time()
+            print "find unique species"
+
+        all_species = np.unique( np.concatenate( p_cols ) )
+        species_counter = len(all_species)
+
+
+        if verbose:
+            end = time()
+            print "took %d seconds" % (end-start)
+            print "get species dict" 
+
+        species_to_int = { all_species[i]: i for i in xrange(species_counter) }
+
+        if verbose:
+            end = time()
+            print "took %d seconds" % (end-start)
+            print "convert column vectors"
+            start = time()
+
+        new_p_cols = []
+        for c in p_cols:
+            new_col = np.array([ species_to_int[sp] for sp in c ])
+            new_p_cols.append(new_col)
+        
+        if verbose:
+            end = time()
+            print "took %d seconds" % (end-start)
+            print "pond matrix conversion to csr sparse"
+            start = time()
+
+        pond_species_matrix = sprs.csr_matrix((p_data[0],(p_rows[0],new_p_cols[0])),shape=(len_ponds,species_counter))
+
+        if verbose:
+            end = time()
+            print "took %d seconds" % (end-start)
+            print "glade matrix conversion to csr sparse"
+            start = time()
+
+        glade_species_matrix = sprs.csr_matrix((p_data[1],(p_rows[1],new_p_cols[1])),shape=(len_glades,species_counter))
+
+        if verbose:
+            end = time()
+            print "took %d seconds" % (end-start)
+
+        TwoCategoryOverlapCalculator.__init__(self,
+                                   pond_species_matrix,
+                                   glade_species_matrix,
+                                   weighted=weighted,
+                                   int_to_pond=ints_to_ponds[0],
+                                   int_to_glade=ints_to_ponds[1],
+                                   pond_to_int=ponds_to_ints[0],
+                                   glade_to_int=ponds_to_ints[1],
+                                   verbose = verbose,
+                                   delete_original_matrix = True
+                                   )
+
+        del matrix_data
+
+    def old_init_slow(self,data_dict_ponds,data_dict_glades,verbose=False,delete_original_data=False,maxint=np.iinfo(np.uint64).max):
+        """ requires data_list to be a list like 
+            [ (pond_identifier, species_identifier, weight), (..., ), ... ]
+        """
+
+        for key,val in data_dict_ponds.iteritems():
+            if type(val) in [tuple,list]:
+                weighted = True
+            elif type(val) == np.ndarray:
+                weighted = False
+            else:
+                raise ValueError("Unexpected type:", type(val),'. Expected 2 or 3.')
+            break
+
+        data_dicts = [ data_dict_ponds, data_dict_glades ]
+        self.species_to_int = {}
+        self.int_to_species = {}
         species_counter = 0
 
         ponds_to_ints = []
