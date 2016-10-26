@@ -1,5 +1,7 @@
 import gc
 import warnings
+import sys
+import os
 
 from time import time
 
@@ -18,9 +20,10 @@ from speciesOverlap.utilities import update_progress
 
 warnings.simplefilter('error')
 
+
 class Ranking():
     
-    def __init__(self,ovcalc,function_to_apply_to_matrix=None,znorm_target=False,standard_mean=None,ranklength=None,verbose=False):
+    def __init__(self,ovcalc,function_to_apply_to_matrix=None,znorm_target=False,standard_mean=None,ranklength=None,verbose=False,ignore_zeros=False):
 
         if isinstance(ovcalc,basestring):
             self.ovcalc = FinishedOvCalc(filename)
@@ -36,6 +39,7 @@ class Ranking():
         self.N_source, self.N_target = self.ovcalc.overlap_matrix.shape
 
         self.verbose = verbose
+        self.ignore_zeros = ignore_zeros
 
     def compute_single(self,use_transposed=False, is_single_category=True,save_scores=False,ranks=[]):
 
@@ -50,7 +54,7 @@ class Ranking():
             if self.znorm_target:
                 new_matrix = self.ovcalc.overlap_matrix.transpose(copy=True)
             else:
-                new_matrix = self.ovcalc.overlap_matrix.T.tocsr()
+                new_matrix = self.ovcalc.overlap_matrix.T.tocsr(copy=True)
 
             # swap meaning of labels in transpose mode
             if not is_single_category:
@@ -76,22 +80,43 @@ class Ranking():
 
             # we only have to convert it to csc if it's not transposed
             if not use_transposed:
-                new_matrix = new_matrix.tocsc()
+                new_matrix = new_matrix.tocsc(copy=True)
 
             if self.standard_mean is not None:
                 manipulate = lambda x: ( zscore(x) + self.standard_mean ) / self.standard_mean
+                deletion_value = 0. 
             else:
                 manipulate = lambda x: zscore(x)
+                deletion_value = -10.
 
             times = []
             start = time()
             for col in xrange(new_matrix.shape[1]):
 
                 #print int_to_glade[col], new_matrix.data[new_matrix.indptr[col]:new_matrix.indptr[col+1]]
-                try:
-                    new_matrix.data[new_matrix.indptr[col]:new_matrix.indptr[col+1]] = manipulate( new_matrix.data[new_matrix.indptr[col]:new_matrix.indptr[col+1]] )
-                except:
-                    new_matrix.data[new_matrix.indptr[col]:new_matrix.indptr[col+1]] /= np.mean( new_matrix.data[new_matrix.indptr[col]:new_matrix.indptr[col+1]] ) 
+                # check if there are >= 2 nonzero entries. then we can calculate the zscore
+                orig_data_len = new_matrix.indptr[col+1] - new_matrix.indptr[col] 
+
+                if (not self.ignore_zeros) and (orig_data_len < new_matrix.shape[0]):
+                    data_to_zscore = np.concatenate( (new_matrix.data[new_matrix.indptr[col]:new_matrix.indptr[col+1]], np.zeros((new_matrix.shape[0]-orig_data_len,))) )
+                else:
+                    data_to_zscore = new_matrix.data[new_matrix.indptr[col]:new_matrix.indptr[col+1]]
+
+                if orig_data_len > 1:
+                    try:
+                        new_val = manipulate( data_to_zscore )[:orig_data_len]
+                        if np.isnan(np.sum(new_val)):
+                            if self.verbose:
+                                print "zscore of length-",len(data_to_zscore)," array yielded nan for", int_to_glade[col], data_to_zscore
+                                print "casting to deletion value", deletion_value
+                            new_matrix.data[new_matrix.indptr[col]:new_matrix.indptr[col+1]] = deletion_value
+                        else:
+                            new_matrix.data[new_matrix.indptr[col]:new_matrix.indptr[col+1]] = new_val
+
+                    except:
+                        new_matrix.data[new_matrix.indptr[col]:new_matrix.indptr[col+1]] = deletion_value
+                else:
+                    new_matrix.data[new_matrix.indptr[col]:new_matrix.indptr[col+1]] = deletion_value
 
                 if self.verbose:
                     end = time()
@@ -99,8 +124,9 @@ class Ranking():
                     update_progress(col+1,new_matrix.shape[1],times,status="calculating zscore")
                     start = time()
 
-            new_matrix = new_matrix.tocsr()            
+            new_matrix = new_matrix.tocsr()
 
+        # to make matrix sortable
         new_matrix = new_matrix * (-1.)
 
         times = []
@@ -160,9 +186,9 @@ class Ranking():
 
 class NormedOverlapRanking(Ranking):
 
-    def __init__(self,ovcalc,standard_mean=2.,ranklength=None,verbose=False):
+    def __init__(self,ovcalc,standard_mean=None,ranklength=None,verbose=False,ignore_zeros=False):
 
-        Ranking.__init__(self,ovcalc,znorm_target=True,standard_mean=standard_mean,ranklength=ranklength,verbose=verbose)
+        Ranking.__init__(self,ovcalc,znorm_target=True,standard_mean=standard_mean,ranklength=ranklength,verbose=verbose,ignore_zeros=ignore_zeros)
 
 
 if __name__=="__main__":

@@ -174,9 +174,17 @@ class OverlapCalculator():
 
 class FinishedOvCalc():
 
-    def __init__(self,filename):
+    def __init__(self,
+                 filename=None,
+                 props=None):
 
-        props = pickle.load(open(filename,'rb'))
+        if filename is not None:
+            props = pickle.load(open(filename,'rb'))
+            row, col, data = props["row"], props["col"], props["data"]
+        elif props is not None:
+            self.overlap_matrix = props['overlap_matrix']
+        else:
+            raise ValueError("Unexpected input arguments filename =",filename,"; props =", props)
 
         if "N_glades" in props:
             self.is_twocategory = True
@@ -194,12 +202,38 @@ class FinishedOvCalc():
         self.int_to_pond = props['int_to_pond']
         self.k_pond = props["k_pond"]
 
-        row, col, data = props["row"], props["col"], props["data"]
 
+        if filename is not None:
+            if self.is_twocategory:
+                self.overlap_matrix = sprs.csr_matrix((data,(row,col)),shape=(self.N_ponds,self.N_glades))
+            else:
+                self.overlap_matrix = sprs.csr_matrix((data,(row,col)),shape=(self.N_ponds,self.N_ponds))
+
+    
+
+    def save_ovcalc(self,filename):
+
+        row, col = self.overlap_matrix.nonzero()
+        data = self.overlap_matrix.data
+
+        values = {
+                    'row': row, 
+                    'col': col,
+                    'data': data,
+                    'pond_to_int': self.pond_to_int,
+                    'int_to_pond': self.int_to_pond,
+                    'N_ponds': self.N_ponds,
+                    'k_pond': self.k_pond,
+                 },
+        
         if self.is_twocategory:
-            self.overlap_matrix = sprs.csr_matrix((data,(row,col)),shape=(self.N_ponds,self.N_glades))
-        else:
-            self.overlap_matrix = sprs.csr_matrix((data,(row,col)),shape=(self.N_ponds,self.N_ponds))
+            values['N_glades'] = self.N_glades
+            values['glade_to_int'] = self.glade_to_int
+            values['int_to_glade'] = self.int_to_glade
+
+        pickle.dump(values,
+                    open(filename,'wb')
+                    )
 
 class ColumnListOverlapCalculator(OverlapCalculator):
 
