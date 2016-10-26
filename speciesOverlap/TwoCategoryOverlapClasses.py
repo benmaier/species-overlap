@@ -196,34 +196,60 @@ class NumpyDictTwoCategoryOverlapCalculator(TwoCategoryOverlapCalculator):
             print "find unique species"
 
         all_species = np.unique( np.concatenate( p_cols ) )
+        all_species.sort()
         species_counter = len(all_species)
 
 
         if verbose:
             end = time()
             print "took %d seconds" % (end-start)
+            print "found %d distinct species" % species_counter
             print "get species dict" 
 
-        species_to_int = { all_species[i]: i for i in xrange(species_counter) }
+        #species_to_int = { all_species[i]: i for i in xrange(species_counter) }
 
         if verbose:
             end = time()
             print "took %d seconds" % (end-start)
             print "convert column vectors"
             start = time()
+            start_total = time()
+            chunk_size = 1000000
+            N_col = len(p_cols[0]) + len(p_cols[1])
+            N_chunks = np.ceil(N_col/float(chunk_size))
+            times = []
+            update_progress(0,N_chunks,times,status="remapping species to proper integers")
 
-        new_p_cols = []
+        ic = 0
         for c in p_cols:
-            new_col = np.array([ species_to_int[sp] for sp in c ])
-            new_p_cols.append(new_col)
+            it = np.nditer(c, flags=['f_index'], op_flags=['readwrite'])
+
+            if ic==0:
+                base_index = 0
+            else:
+                base_index = len(p_cols[0])
+
+            while not it.finished:
+                it[0] = np.searchsorted(all_species,it[0])
+                if verbose and (base_index+it.index) % chunk_size == 0:
+                    end = time()
+                    times.append(end-start)
+                    update_progress((base_index+it.index)/chunk_size,N_chunks,times,status="remapping species to proper integers")
+                    start = time()
+
+                it.iternext()
+
+            ic += 1
+
+        update_progress(1,1,[],status="remapping species to proper integers")
         
         if verbose:
-            end = time()
-            print "took %d seconds" % (end-start)
+            end_total = time()
+            print "took %d seconds" % (end_total-start_total)
             print "pond matrix conversion to csr sparse"
             start = time()
 
-        pond_species_matrix = sprs.csr_matrix((p_data[0],(p_rows[0],new_p_cols[0])),shape=(len_ponds,species_counter))
+        pond_species_matrix = sprs.csr_matrix((p_data[0],(p_rows[0],p_cols[0])),shape=(len_ponds,species_counter))
 
         if verbose:
             end = time()
@@ -231,7 +257,7 @@ class NumpyDictTwoCategoryOverlapCalculator(TwoCategoryOverlapCalculator):
             print "glade matrix conversion to csr sparse"
             start = time()
 
-        glade_species_matrix = sprs.csr_matrix((p_data[1],(p_rows[1],new_p_cols[1])),shape=(len_glades,species_counter))
+        glade_species_matrix = sprs.csr_matrix((p_data[1],(p_rows[1],p_cols[1])),shape=(len_glades,species_counter))
 
         if verbose:
             end = time()
