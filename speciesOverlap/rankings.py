@@ -23,7 +23,8 @@ warnings.simplefilter('error')
 
 class Ranking():
     
-    def __init__(self,ovcalc,function_to_apply_to_matrix=None,znorm_target=False,standard_mean=None,ranklength=None,verbose=False,ignore_zeros=False):
+    def __init__(self,ovcalc,function_to_apply_to_matrix=None,znorm_target=False,standard_mean=None,ranklength=None,verbose=False,ignore_zeros=False,
+                 min_data_points_per_pond=2):
 
         if isinstance(ovcalc,basestring):
             self.ovcalc = FinishedOvCalc(filename)
@@ -40,6 +41,7 @@ class Ranking():
 
         self.verbose = verbose
         self.ignore_zeros = ignore_zeros
+        self.min_data_points_per_pond = min_data_points_per_pond
 
     def compute_single(self,use_transposed=False, is_single_category=True,save_scores=False,ranks=[]):
 
@@ -102,7 +104,8 @@ class Ranking():
                 else:
                     data_to_zscore = new_matrix.data[new_matrix.indptr[col]:new_matrix.indptr[col+1]]
 
-                if orig_data_len > 1:
+                #see if there's enough data points to be considered
+                if orig_data_len >= self.min_data_points_per_pond:
                     try:
                         new_val = manipulate( data_to_zscore )[:orig_data_len]
                         if np.isnan(np.sum(new_val)):
@@ -165,7 +168,7 @@ class Ranking():
 
         return ranks
 
-    def compute(self,save_scores=False,rank_object=None):
+    def compute(self,save_scores=False,rank_object=None,min_data_points_per_pond=1):
 
         if self.ovcalc.is_twocategory:
             if rank_object is None:
@@ -186,9 +189,16 @@ class Ranking():
 
 class NormedOverlapRanking(Ranking):
 
-    def __init__(self,ovcalc,standard_mean=None,ranklength=None,verbose=False,ignore_zeros=False):
+    def __init__(self,ovcalc,standard_mean=None,ranklength=None,verbose=False,ignore_zeros=False,min_data_points_per_pond=2):
 
-        Ranking.__init__(self,ovcalc,znorm_target=True,standard_mean=standard_mean,ranklength=ranklength,verbose=verbose,ignore_zeros=ignore_zeros)
+        Ranking.__init__(self,
+                         ovcalc,
+                         znorm_target=True,
+                         standard_mean=standard_mean,
+                         ranklength=ranklength,
+                         verbose=verbose,
+                         ignore_zeros=ignore_zeros,
+                         min_data_points_per_pond=min_data_points_per_pond)
 
 
 if __name__=="__main__":
