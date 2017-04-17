@@ -153,8 +153,10 @@ class Ranking():
 
             if save_scores:
                 vals = - (new_matrix.data[ new_matrix.indptr[row]:new_matrix.indptr[row+1] ])[greatest_indices]
+                rank_no = 1
                 for col,val in izip(col_indices,vals):
-                    ranks.append([ int_to_pond[row], int_to_glade[col], val ])
+                    ranks.append([ int_to_pond[row], int_to_glade[col], val, rank_no ])
+                    rank_no += 1
             else:
                 for col in col_indices:
                     ranks.append([ int_to_pond[row], int_to_glade[col] ])
